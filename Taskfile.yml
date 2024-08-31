@@ -1,0 +1,105 @@
+version: '3'
+
+vars:
+  json_file: "vm_info.json"
+
+tasks:
+  default:
+    desc: "Create and start all VMs and save their info to JSON"
+    cmds:
+      - task: generate-ssh-key
+      - task: initialize-json
+      - task: create-controllers
+      - task: create-loadbalancer
+      - task: create-workers
+      - task: finalize-json
+
+  generate-ssh-key:
+    desc: "Generate SSH key pair"
+    cmds:
+      - ssh-keygen -t rsa -b 4096 -f cloud-init/id_rsa -N ""
+      - chmod 600 cloud-init/id_rsa
+
+  initialize-json:
+    desc: "Initialize the JSON file"
+    cmds:
+      - |
+        if [ ! -f {{.json_file}} ]; then
+          echo "[" > {{.json_file}}
+        fi
+
+  create-controllers:
+    desc: "Create and start the controller VMs"
+    cmds:
+      - task: create-vm
+        vars: {vm_name: "k8s-controller-1", ip: "192.168.122.101", memory: "2048", vcpus: "1"}
+      - task: create-vm
+        vars: {vm_name: "k8s-controller-2", ip: "192.168.122.102", memory: "2048", vcpus: "1"}
+      - task: create-vm
+        vars: {vm_name: "k8s-controller-3", ip: "192.168.122.103", memory: "2048", vcpus: "1"}
+
+  create-loadbalancer:
+    desc: "Create and start the load balancer VM"
+    cmds:
+      - task: create-vm
+        vars: {vm_name: "k8s-loadbalancer", ip: "192.168.122.110", memory: "2048", vcpus: "1"}
+
+  create-workers:
+    desc: "Create and start the worker VMs"
+    cmds:
+      - task: create-vm
+        vars: {vm_name: "k8s-worker-1", ip: "192.168.122.201", memory: "2048", vcpus: "1"}
+      - task: create-vm
+        vars: {vm_name: "k8s-worker-2", ip: "192.168.122.202", memory: "2048", vcpus: "1"}
+
+  create-vm:
+    desc: "Create a VM and save its info"
+    cmds:
+      - bash cloud-init/generate-seed.sh {{.vm_name}} {{.ip}}
+      - |
+        virt-install \
+          --name {{.vm_name}} \
+          --memory {{.memory}} \
+          --vcpus {{.vcpus}} \
+          --disk images/{{.vm_name}}.img,size=20 \
+          --disk seed-iso/{{.vm_name}}-seed.iso,device=cdrom \
+          --cdrom isos/ubuntu-24.04.iso \
+          --os-variant ubuntu24.04 \
+          --network network=default \
+          --boot cdrom,hd \
+          --noautoconsole \
+      - task: save-machine-info
+        vars: {name: "{{.vm_name}}", ip: "{{.ip}}", memory: "{{.memory}}", vcpus: "{{.vcpus}}"}
+
+  save-machine-info:
+    desc: "Save machine info to JSON file"
+    cmds:
+      - |
+        echo '{ "name": "{{.name}}", "ip": "{{.ip}}", "memory": "{{.memory}}", "vcpus": "{{.vcpus}}" },' >> {{.json_file}}
+
+  finalize-json:
+    desc: "Finalize the JSON file"
+    cmds:
+      - sed -i '$ s/,$//' {{.json_file}}
+      - echo "]" >> {{.json_file}}
+
+  cleanup:
+    desc: "Destroy and remove all VMs and clean up files"
+    cmds:
+      - virsh destroy k8s-controller-1 || true
+      - virsh destroy k8s-controller-2 || true
+      - virsh destroy k8s-controller-3 || true
+      - virsh destroy k8s-loadbalancer || true
+      - virsh destroy k8s-worker-1 || true
+      - virsh destroy k8s-worker-2 || true
+      - virsh undefine k8s-controller-1 --remove-all-storage || true
+      - virsh undefine k8s-controller-2 --remove-all-storage || true
+      - virsh undefine k8s-controller-3 --remove-all-storage || true
+      - virsh undefine k8s-loadbalancer --remove-all-storage || true
+      - virsh undefine k8s-worker-1 --remove-all-storage || true
+      - virsh undefine k8s-worker-2 --remove-all-storage || true
+      - rm -f {{.json_file}}
+      - rm -f cloud-init/user-data.tpl
+      - rm -f cloud-init/id_rsa.pub
+      - rm -f cloud-init/id_rsa
+      - rm -rf seed-iso/
