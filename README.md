@@ -16,3 +16,11 @@ Roadmap:
 - [Task](https://taskfile.dev/)
 - CoreOS ISO in `isos/`
 - Fighting spirit
+
+## Up
+
+Running `task up` will start the virtualisation stack
+
+## Down
+
+Running `task down` will destroy everything created with the tool
