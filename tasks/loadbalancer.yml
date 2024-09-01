@@ -14,6 +14,8 @@ tasks:
       - task: deploy-keepalived
 
   prepare-haproxy-config:
+    silent: true
+    internal: true
     desc: "Prepare the HAProxy configuration"
     cmds:
       # Fetch IP information from the JSON file
@@ -32,6 +34,8 @@ tasks:
         haproxy/haproxy.cfg.template > haproxy/generated/haproxy.cfg
 
   prepare-keepalived-config:
+    silent: true
+    internal: true
     desc: "Prepare the Keepalived configuration"
     cmds:
       - |
@@ -41,6 +45,8 @@ tasks:
 
 
   deploy-haproxy:
+    silent: true
+    internal: true
     desc: "Deploy HAProxy on the load balancer VM"
     cmds:
       - |
@@ -55,6 +61,8 @@ tasks:
         sudo podman run -d --name haproxy --restart=always -p 80:80 -p 443:443 -v /var/home/core/haproxy:/usr/local/etc/haproxy:ro docker.io/library/haproxy:latest
 
   deploy-keepalived:
+    silent: true
+    internal: true
     desc: "Deploy Keepalived on the load balancer VM"
     cmds:
       - |
