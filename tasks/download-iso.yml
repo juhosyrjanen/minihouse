@@ -1,0 +1,20 @@
+version: '3'
+
+tasks:
+  download-coreos-iso:
+    desc: "Download Fedora CoreOS ISO and rename it to coreos.iso"
+    cmds:
+      - |
+        if [ -f isos/coreOS.iso ]; then
+          echo "✅ CoreOS image already exists"
+          exit 0
+        else
+          echo "Downloading stable CoreOS image..."
+
+          mkdir -p isos
+          wget -P isos https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/40.20240808.3.0/x86_64/fedora-coreos-40.20240808.3.0-live.x86_64.iso
+          echo "✅ CoreOS image downloaded"
+
+          mv isos/fedora-coreos-40.20240808.3.0-live.x86_64.iso isos/coreOS.iso
+        fi
+    silent: true
