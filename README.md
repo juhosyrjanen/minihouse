@@ -4,10 +4,10 @@ The plan with this repo is to setup a "pure" development Kubernetes environment 
 
 Roadmap:
 
-✅ - Libvirt based CoreOS virtualisation
-✅ - Kubernetes host provisioning
-🚧 - Automated cluster setup via `kubeadm`
-🚧 - Automated cluster addon setup via ArgoCD
+ - ✅ Libvirt based CoreOS virtualisation
+ - ✅ Kubernetes host provisioning
+ - 🚧 Automated cluster setup via `kubeadm`
+ - 🚧 Automated cluster addon setup via ArgoCD
 
 ## Requirements
 
