@@ -1,11 +1,12 @@
 # A small repo doing Kubernetes stuff
 
-The plan with this repo is to setup a "pure" development Kubernetes environment using Fedora CoreOS, `kubeadm` and ArgoCD.
+The plan with this repo is to setup a development Kubernetes environment using Fedora CoreOS, Podman, `kubeadm` and ArgoCD.
 
 Roadmap:
 
  - ✅ Libvirt based CoreOS virtualisation
  - ✅ Kubernetes host provisioning
+ - 🚧 `etcd` in Podman
  - 🚧 Automated cluster setup via `kubeadm`
  - 🚧 Automated cluster addon setup via ArgoCD
 
