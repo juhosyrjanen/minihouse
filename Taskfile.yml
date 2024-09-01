@@ -2,30 +2,39 @@ version: '3'
 
 vars:
   json_file: "vm_info.json"
+  ignition_path: "ignition"
 
 tasks:
 
   prerequisites:
     desc: "Install required packages"
     cmds:
+      - task: check-coreos-deps
       - task: check-libvirt
       - task: check-kubetools
+
+  check-coreos-deps:
+    desc: "Check that CoreOS dependencies are installed"
+    silent: true
+    cmds:
+      - command -v coreos-install > /dev/null 2>&1 && echo "✅ - CoreOS dependencies are installed!" || yay --noconfirm -S coreos-installer
+      - command -v butane > /dev/null 2>&1 && echo "✅ - Butane is installed!" || yay --noconfirm -S butane
 
   check-libvirt:
     desc: "Check that libvirt is installed"
     silent: true
     cmds:
       # Check that libvirt is installed
-      - systemctl status libvirtd  > /dev/null 2>&1 && echo "OK - Libvirt is installed!" || sudo pacman --noconfirm -S libvirt && sudo systemctl enable --now libvirtd
+      - systemctl status libvirtd  > /dev/null 2>&1 && echo "✅ - Libvirt is installed!" || sudo pacman --noconfirm -S libvirt && sudo systemctl enable --now libvirtd
 
   check-kubetools:
     desc: "Check that kubetools are installed"
     silent: true
     cmds:
       # Check that kubetools are installed
-      - command -v kubectl > /dev/null 2>&1 && echo "OK - kubectl is installed!" || sudo pacman --noconfirm -S kubectl
-      - command -v kustomize > /dev/null 2>&1 && echo "OK - kustomize is installed!" || sudo pacman --noconfirm -S kustomize
-      - command -v helm > /dev/null 2>&1 &&  echo "OK - Helm is installed!" || sudo pacman --noconfirm -S helm
+      - command -v kubectl > /dev/null 2>&1 && echo "✅ - kubectl is installed!" || sudo pacman --noconfirm -S kubectl
+      - command -v kustomize > /dev/null 2>&1 && echo "✅ - kustomize is installed!" || sudo pacman --noconfirm -S kustomize
+      - command -v helm > /dev/null 2>&1 &&  echo "✅ - Helm is installed!" || sudo pacman --noconfirm -S helm
 
   up:
     desc: "Create and start all VMs and save their info to JSON"
@@ -41,8 +50,8 @@ tasks:
     silent: true
     desc: "Generate SSH key pair"
     cmds:
-      - ssh-keygen -t rsa -b 4096 -f cloud-init/id_rsa -N ""
-      - chmod 600 cloud-init/id_rsa
+      - ssh-keygen -t rsa -b 4096 -f {{.ignition_path}}/id_rsa -N ""
+      - chmod 600 {{.ignition_path}}/id_rsa
 
   initialize-json:
     silent: true
@@ -78,21 +87,22 @@ tasks:
         vars: {vm_name: "k8s-worker-2", ip: "192.168.122.202", memory: "2048", vcpus: "1"}
 
   create-vm:
+    silent: true
     desc: "Create a VM and save its info"
     cmds:
-      - bash cloud-init/generate-seed.sh {{.vm_name}} {{.ip}}
+      - bash {{.ignition_path}}/generate-seed.sh {{.vm_name}} {{.ip}}
       - |
         virt-install \
           --name {{.vm_name}} \
           --memory {{.memory}} \
           --vcpus {{.vcpus}} \
-          --disk images/{{.vm_name}}.img,size=20 \
-          --disk seed-iso/{{.vm_name}}-seed.iso,device=cdrom \
-          --cdrom isos/ubuntu-24.04.iso \
-          --os-variant ubuntu24.04 \
-          --network network=default \
+          --disk path=images/{{.vm_name}}.qcow2,format=qcow2 \
+          --cdrom seed-iso/{{.vm_name}}-seed.iso \
+          --os-variant fedora-coreos-stable \
+          --network network=default,model=virtio \
           --boot cdrom,hd \
-          --noautoconsole \
+          --noautoconsole > /dev/null 2>&1 \
+          && echo "✅ VM {{.vm_name}} created successfully!"
       - task: save-machine-info
         vars: {name: "{{.vm_name}}", ip: "{{.ip}}", memory: "{{.memory}}", vcpus: "{{.vcpus}}"}
 
@@ -110,7 +120,22 @@ tasks:
       - sed -i '$ s/,$//' {{.json_file}}
       - echo "]" >> {{.json_file}}
 
+  test-ssh-connections:
+    desc: "Test SSH connections to all VMs"
+    cmds:
+      - |
+        if [ -f {{.json_file}} ]; then
+          IP_ADDRESSES=$(jq -r '.[].ip' {{.json_file}})
+          for IP in $IP_ADDRESSES; do
+            echo "Testing SSH connection to $IP..."
+            ssh -o StrictHostKeyChecking=no -i {{.ignition_path}}/id_rsa core@$IP "echo ✅ Hello world from \$(hostname)" || echo "SSH connection to $IP failed."
+          done
+        else
+          echo "JSON file {{.json_file}} not found!"
+        fi
+
   down:
+    silent: true
     desc: "Destroy and remove all VMs and clean up files"
     cmds:
       - virsh destroy k8s-controller-1 || true
@@ -125,9 +150,16 @@ tasks:
       - virsh undefine k8s-loadbalancer --remove-all-storage || true
       - virsh undefine k8s-worker-1 --remove-all-storage || true
       - virsh undefine k8s-worker-2 --remove-all-storage || true
-      - rm -f {{.json_file}}
-      - rm -f cloud-init/user-data.tpl
-      - rm -f cloud-init/meta-data.tpl
-      - rm -f cloud-init/id_rsa.pub
-      - rm -f cloud-init/id_rsa
+      - rm -f {{.ignition_path}}/config*
+      - rm -f {{.ignition_path}}/id_rsa.pub
+      - rm -f {{.ignition_path}}/id_rsa
       - rm -rf seed-iso/
+      # Cleanup known_hosts file
+      - |
+        if [ -f {{.json_file}} ]; then
+          IP_ADDRESSES=$(jq -r '.[].ip' {{.json_file}})
+          for IP in $IP_ADDRESSES; do
+            ssh-keygen -f "$HOME/.ssh/known_hosts" -R "$IP" >/dev/null 2>&1 || true
+          done
+        fi
+      - rm -f {{.json_file}}
