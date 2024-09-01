@@ -12,7 +12,7 @@ Roadmap:
 ## Requirements
 
 - Arch Linux or Arch based OS
-- [Libvirt](https://libvirt.org/) default networking stack (assumed CIRD currently `192.168.68.0/24`)
+- [Libvirt](https://libvirt.org/) default networking stack (assumed CIRD currently `192.168.122.0/24`)
 - [Task](https://taskfile.dev/)
 - CoreOS ISO in `isos/`
 - Fighting spirit
