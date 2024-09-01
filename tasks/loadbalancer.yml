@@ -58,7 +58,7 @@ tasks:
         scp -o "StrictHostKeyChecking=no" -i {{.ignition_path}}/id_rsa haproxy/generated/haproxy.cfg core@$LB_IP:/var/home/core/haproxy/haproxy.cfg
 
         ssh -o "StrictHostKeyChecking=no" -i {{.ignition_path}}/id_rsa core@$LB_IP \
-        sudo podman run -d --name haproxy --restart=always -p 80:80 -p 443:443 -v /var/home/core/haproxy:/usr/local/etc/haproxy:ro docker.io/library/haproxy:latest
+        sudo podman run -d --name haproxy --restart=always -p 6443:6443 -v /var/home/core/haproxy:/usr/local/etc/haproxy:ro docker.io/library/haproxy:latest
 
   deploy-keepalived:
     silent: true

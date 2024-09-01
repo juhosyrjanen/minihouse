@@ -20,10 +20,14 @@ tasks:
       #- task: vms:create-workers
       - task: vms:finalize-json
 
+  cluster:lb:
+    desc: "Bootstrap a Kubernetes cluster loadbalancer"
+    cmds:
+      - task: setup-loadbalancer
+
   cluster:up:
     desc: "Bootstrap a Kubernetes cluster"
     cmds:
-      - task: setup-loadbalancer
 
   setup-loadbalancer:
     desc: "Setup the load balancer"
