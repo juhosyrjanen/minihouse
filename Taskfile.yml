@@ -4,7 +4,30 @@ vars:
   json_file: "vm_info.json"
 
 tasks:
-  default:
+
+  prerequisites:
+    desc: "Install required packages"
+    cmds:
+      - task: check-libvirt
+      - task: check-kubetools
+
+  check-libvirt:
+    desc: "Check that libvirt is installed"
+    silent: true
+    cmds:
+      # Check that libvirt is installed
+      - systemctl status libvirtd  > /dev/null 2>&1 && echo "OK - Libvirt is installed!" || sudo pacman --noconfirm -S libvirt && sudo systemctl enable --now libvirtd
+
+  check-kubetools:
+    desc: "Check that kubetools are installed"
+    silent: true
+    cmds:
+      # Check that kubetools are installed
+      - command -v kubectl > /dev/null 2>&1 && echo "OK - kubectl is installed!" || sudo pacman --noconfirm -S kubectl
+      - command -v kustomize > /dev/null 2>&1 && echo "OK - kustomize is installed!" || sudo pacman --noconfirm -S kustomize
+      - command -v helm > /dev/null 2>&1 &&  echo "OK - Helm is installed!" || sudo pacman --noconfirm -S helm
+
+  up:
     desc: "Create and start all VMs and save their info to JSON"
     cmds:
       - task: generate-ssh-key
@@ -15,12 +38,14 @@ tasks:
       - task: finalize-json
 
   generate-ssh-key:
+    silent: true
     desc: "Generate SSH key pair"
     cmds:
       - ssh-keygen -t rsa -b 4096 -f cloud-init/id_rsa -N ""
       - chmod 600 cloud-init/id_rsa
 
   initialize-json:
+    silent: true
     desc: "Initialize the JSON file"
     cmds:
       - |
@@ -72,18 +97,20 @@ tasks:
         vars: {name: "{{.vm_name}}", ip: "{{.ip}}", memory: "{{.memory}}", vcpus: "{{.vcpus}}"}
 
   save-machine-info:
+    silent: true
     desc: "Save machine info to JSON file"
     cmds:
       - |
         echo '{ "name": "{{.name}}", "ip": "{{.ip}}", "memory": "{{.memory}}", "vcpus": "{{.vcpus}}" },' >> {{.json_file}}
 
   finalize-json:
+    silent: true
     desc: "Finalize the JSON file"
     cmds:
       - sed -i '$ s/,$//' {{.json_file}}
       - echo "]" >> {{.json_file}}
 
-  cleanup:
+  down:
     desc: "Destroy and remove all VMs and clean up files"
     cmds:
       - virsh destroy k8s-controller-1 || true
@@ -100,6 +127,7 @@ tasks:
       - virsh undefine k8s-worker-2 --remove-all-storage || true
       - rm -f {{.json_file}}
       - rm -f cloud-init/user-data.tpl
+      - rm -f cloud-init/meta-data.tpl
       - rm -f cloud-init/id_rsa.pub
       - rm -f cloud-init/id_rsa
       - rm -rf seed-iso/

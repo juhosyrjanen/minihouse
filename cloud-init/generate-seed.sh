@@ -48,6 +48,11 @@ runcmd:
   - systemctl enable --now kubelet
 EOF
 
+cat > ${CLOUD_INIT_DIR}/meta-data.tpl <<EOF
+instance-id: {{ .Hostname }}
+local-hostname: {{ .Hostname }}
+EOF
+
 mkdir -p ${SEED_ISO_DIR}/${VM_NAME}
 
 # Generate user-data from template
