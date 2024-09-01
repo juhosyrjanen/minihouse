@@ -17,6 +17,8 @@ Roadmap:
 - CoreOS ISO in `isos/`
 - Fighting spirit
 
+Running `task prerequisites` will check that required tools are installed and install them if not.
+
 ## Up
 
 Running `task up` will start the virtualisation stack
