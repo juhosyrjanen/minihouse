@@ -1,0 +1,44 @@
+version: '3'
+
+vars:
+  json_file: "vm_info.json"
+  ignition_path: "ignition"
+
+tasks:
+  setup-loadbalancer:
+    desc: "Setup the load balancer"
+    cmds:
+      - task: prepare-haproxy-config
+      - task: prepare-keepalived-config
+
+  prepare-haproxy-config:
+    internal: true
+    desc: "Prepare HAProxy configuration"
+    cmds:
+      - |
+        if [ -f {{.json_file}} ]; then
+          controller_1_ip=$(jq -r '.[] | select(.name == "k8s-controller-1") | .ip' {{.json_file}})
+          controller_2_ip=$(jq -r '.[] | select(.name == "k8s-controller-2") | .ip' {{.json_file}})
+          controller_3_ip=$(jq -r '.[] | select(.name == "k8s-controller-3") | .ip' {{.json_file}})
+          mkdir -p haproxy/generated
+          sed "s/{{controller_1_ip}}/${controller_1_ip}/g; s/{{controller_2_ip}}/${controller_2_ip}/g; s/{{controller_3_ip}}/${controller_3_ip}/g" \
+          haproxy/haproxy.cfg.template > haproxy/generated/haproxy.cfg
+        else
+          echo "JSON file {{.json_file}} not found!"
+          exit 1
+        fi
+
+  prepare-keepalived-config:
+    internal: true
+    desc: "Prepare Keepalived configuration"
+    cmds:
+      - |
+        if [ -f {{.json_file}} ]; then
+          loadbalancer_ip=$(jq -r '.[] | select(.name == "k8s-loadbalancer") | .ip' {{.json_file}})
+          mkdir -p haproxy/generated
+          sed "s/{{loadbalancer_ip}}/${loadbalancer_ip}/g" \
+          haproxy/keepalived.conf.template > haproxy/generated/keepalived.conf
+        else
+          echo "JSON file {{.json_file}} not found!"
+          exit 1
+        fi

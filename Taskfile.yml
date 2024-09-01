@@ -4,121 +4,31 @@ vars:
   json_file: "vm_info.json"
   ignition_path: "ignition"
 
+includes:
+  loadbalancer: tasks/loadbalancer.yml
+  vms: tasks/vms.yml
+  checks: tasks/checks.yml
+
 tasks:
-
-  prerequisites:
-    desc: "Install required packages"
-    cmds:
-      - task: check-coreos-deps
-      - task: check-libvirt
-      - task: check-kubetools
-
-  check-coreos-deps:
-    desc: "Check that CoreOS dependencies are installed"
-    silent: true
-    cmds:
-      - command -v coreos-install > /dev/null 2>&1 && echo "✅ - CoreOS dependencies are installed!" || yay --noconfirm -S coreos-installer
-      - command -v butane > /dev/null 2>&1 && echo "✅ - Butane is installed!" || yay --noconfirm -S butane
-
-  check-libvirt:
-    desc: "Check that libvirt is installed"
-    silent: true
-    cmds:
-      # Check that libvirt is installed
-      - systemctl status libvirtd  > /dev/null 2>&1 && echo "✅ - Libvirt is installed!" || sudo pacman --noconfirm -S libvirt && sudo systemctl enable --now libvirtd
-
-  check-kubetools:
-    desc: "Check that kubetools are installed"
-    silent: true
-    cmds:
-      # Check that kubetools are installed
-      - command -v kubectl > /dev/null 2>&1 && echo "✅ - kubectl is installed!" || sudo pacman --noconfirm -S kubectl
-      - command -v kustomize > /dev/null 2>&1 && echo "✅ - kustomize is installed!" || sudo pacman --noconfirm -S kustomize
-      - command -v helm > /dev/null 2>&1 &&  echo "✅ - Helm is installed!" || sudo pacman --noconfirm -S helm
-
   up:
-    desc: "Create and start all VMs and save their info to JSON"
+    desc: "Create and start all VMs"
     cmds:
-      - task: generate-ssh-key
-      - task: initialize-json
-      - task: create-controllers
-      - task: create-loadbalancer
-      - task: create-workers
-      - task: finalize-json
+      - task: vms:generate-ssh-key
+      - task: vms:initialize-json
+      - task: vms:create-controllers
+      - task: vms:create-loadbalancer
+      #- task: vms:create-workers
+      - task: vms:finalize-json
 
-  generate-ssh-key:
-    silent: true
-    desc: "Generate SSH key pair"
+  cluster:up:
+    desc: "Bootstrap a Kubernetes cluster"
     cmds:
-      - ssh-keygen -t rsa -b 4096 -f {{.ignition_path}}/id_rsa -N ""
-      - chmod 600 {{.ignition_path}}/id_rsa
+      - task: setup-loadbalancer
 
-  initialize-json:
-    silent: true
-    desc: "Initialize the JSON file"
+  setup-loadbalancer:
+    desc: "Setup the load balancer"
     cmds:
-      - |
-        if [ ! -f {{.json_file}} ]; then
-          echo "[" > {{.json_file}}
-        fi
-
-  create-controllers:
-    desc: "Create and start the controller VMs"
-    cmds:
-      - task: create-vm
-        vars: {vm_name: "k8s-controller-1", ip: "192.168.122.101", memory: "2048", vcpus: "1"}
-      - task: create-vm
-        vars: {vm_name: "k8s-controller-2", ip: "192.168.122.102", memory: "2048", vcpus: "1"}
-      - task: create-vm
-        vars: {vm_name: "k8s-controller-3", ip: "192.168.122.103", memory: "2048", vcpus: "1"}
-
-  create-loadbalancer:
-    desc: "Create and start the load balancer VM"
-    cmds:
-      - task: create-vm
-        vars: {vm_name: "k8s-loadbalancer", ip: "192.168.122.110", memory: "2048", vcpus: "1"}
-
-  create-workers:
-    desc: "Create and start the worker VMs"
-    cmds:
-      - task: create-vm
-        vars: {vm_name: "k8s-worker-1", ip: "192.168.122.201", memory: "2048", vcpus: "1"}
-      - task: create-vm
-        vars: {vm_name: "k8s-worker-2", ip: "192.168.122.202", memory: "2048", vcpus: "1"}
-
-  create-vm:
-    silent: true
-    desc: "Create a VM and save its info"
-    cmds:
-      - bash {{.ignition_path}}/generate-seed.sh {{.vm_name}} {{.ip}}
-      - |
-        virt-install \
-          --name {{.vm_name}} \
-          --memory {{.memory}} \
-          --vcpus {{.vcpus}} \
-          --disk path=images/{{.vm_name}}.qcow2,format=qcow2 \
-          --cdrom seed-iso/{{.vm_name}}-seed.iso \
-          --os-variant fedora-coreos-stable \
-          --network network=default,model=virtio \
-          --boot cdrom,hd \
-          --noautoconsole > /dev/null 2>&1 \
-          && echo "✅ VM {{.vm_name}} created successfully!"
-      - task: save-machine-info
-        vars: {name: "{{.vm_name}}", ip: "{{.ip}}", memory: "{{.memory}}", vcpus: "{{.vcpus}}"}
-
-  save-machine-info:
-    silent: true
-    desc: "Save machine info to JSON file"
-    cmds:
-      - |
-        echo '{ "name": "{{.name}}", "ip": "{{.ip}}", "memory": "{{.memory}}", "vcpus": "{{.vcpus}}" },' >> {{.json_file}}
-
-  finalize-json:
-    silent: true
-    desc: "Finalize the JSON file"
-    cmds:
-      - sed -i '$ s/,$//' {{.json_file}}
-      - echo "]" >> {{.json_file}}
+      - task: loadbalancer:setup-loadbalancer
 
   test-ssh-connections:
     desc: "Test SSH connections to all VMs"

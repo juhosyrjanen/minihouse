@@ -1,0 +1,33 @@
+version: '3'
+
+tasks:
+  prerequisites:
+    desc: "Install required packages"
+    cmds:
+      - task: check-coreos-deps
+      - task: check-libvirt
+      - task: check-kubetools
+
+  check-coreos-deps:
+    internal: true
+    desc: "Check that CoreOS dependencies are installed"
+    silent: true
+    cmds:
+      - command -v coreos-install > /dev/null 2>&1 && echo "✅ - CoreOS dependencies are installed!" || yay --noconfirm -S coreos-installer
+      - command -v butane > /dev/null 2>&1 && echo "✅ - Butane is installed!" || yay --noconfirm -S butane
+
+  check-libvirt:
+    internal: true
+    desc: "Check that libvirt is installed"
+    silent: true
+    cmds:
+      - systemctl status libvirtd > /dev/null 2>&1 && echo "✅ - Libvirt is installed!" || sudo pacman --noconfirm -S libvirt && sudo systemctl enable --now libvirtd
+
+  check-kubetools:
+    internal: true
+    desc: "Check that kubetools are installed"
+    silent: true
+    cmds:
+      - command -v kubectl > /dev/null 2>&1 && echo "✅ - kubectl is installed!" || sudo pacman --noconfirm -S kubectl
+      - command -v kustomize > /dev/null 2>&1 && echo "✅ - kustomize is installed!" || sudo pacman --noconfirm -S kustomize
+      - command -v helm > /dev/null 2>&1 && echo "✅ - Helm is installed!" || sudo pacman --noconfirm -S helm

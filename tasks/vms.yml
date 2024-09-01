@@ -1,0 +1,82 @@
+version: '3'
+
+vars:
+  json_file: "vm_info.json"
+  ignition_path: "ignition"
+
+tasks:
+
+  generate-ssh-key:
+    silent: true
+    desc: "Generate SSH key pair"
+    cmds:
+      - ssh-keygen -t rsa -b 4096 -f {{.ignition_path}}/id_rsa -N ""
+      - chmod 600 {{.ignition_path}}/id_rsa
+
+  initialize-json:
+    silent: true
+    desc: "Initialize the JSON file"
+    cmds:
+      - |
+        if [ ! -f {{.json_file}} ]; then
+          echo "[" > {{.json_file}}
+        fi
+
+  create-controllers:
+    desc: "Create and start the controller VMs"
+    cmds:
+      - task: create-vm
+        vars: {vm_name: "k8s-controller-1", ip: "192.168.122.101", memory: "2048", vcpus: "1"}
+      - task: create-vm
+        vars: {vm_name: "k8s-controller-2", ip: "192.168.122.102", memory: "2048", vcpus: "1"}
+      - task: create-vm
+        vars: {vm_name: "k8s-controller-3", ip: "192.168.122.103", memory: "2048", vcpus: "1"}
+
+  create-loadbalancer:
+    desc: "Create and start the load balancer VM"
+    cmds:
+      - task: create-vm
+        vars: {vm_name: "k8s-loadbalancer", ip: "192.168.122.110", memory: "2048", vcpus: "1"}
+
+  create-workers:
+    desc: "Create and start the worker VMs"
+    cmds:
+      - task: create-vm
+        vars: {vm_name: "k8s-worker-1", ip: "192.168.122.201", memory: "2048", vcpus: "1"}
+      - task: create-vm
+        vars: {vm_name: "k8s-worker-2", ip: "192.168.122.202", memory: "2048", vcpus: "1"}
+
+  create-vm:
+    silent: true
+    desc: "Create a VM and save its info"
+    cmds:
+      - bash {{.ignition_path}}/generate-seed.sh {{.vm_name}} {{.ip}}
+      - |
+        virt-install \
+          --name {{.vm_name}} \
+          --memory {{.memory}} \
+          --vcpus {{.vcpus}} \
+          --disk path=images/{{.vm_name}}.qcow2,format=qcow2 \
+          --cdrom seed-iso/{{.vm_name}}-seed.iso \
+          --os-variant fedora-coreos-stable \
+          --network network=default,model=virtio \
+          --boot cdrom,hd \
+          --noautoconsole > /dev/null 2>&1 \
+          && echo "✅ VM {{.vm_name}} created successfully!"
+      - task: save-machine-info
+        vars: {name: "{{.vm_name}}", ip: "{{.ip}}", memory: "{{.memory}}", vcpus: "{{.vcpus}}"}
+
+  save-machine-info:
+    internal: true
+    silent: true
+    desc: "Save machine info to JSON file"
+    cmds:
+      - |
+        echo '{ "name": "{{.name}}", "ip": "{{.ip}}", "memory": "{{.memory}}", "vcpus": "{{.vcpus}}" },' >> {{.json_file}}
+
+  finalize-json:
+    silent: true
+    desc: "Finalize the JSON file"
+    cmds:
+      - sed -i '$ s/,$//' {{.json_file}}
+      - echo "]" >> {{.json_file}}
