@@ -9,6 +9,6 @@ vrrp_instance VI_1 {
         auth_pass 1234
     }
     virtual_ipaddress {
-        {{loadbalancer_ip}}
+        loadbalancer_ip
     }
 }

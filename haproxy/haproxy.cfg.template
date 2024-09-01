@@ -7,6 +7,6 @@ backend kubernetes-api
     mode tcp
     balance roundrobin
     option tcp-check
-    server k8s-controller-1 {{controller_1_ip}}:6443 check
-    server k8s-controller-2 {{controller_2_ip}}:6443 check
-    server k8s-controller-3 {{controller_3_ip}}:6443 check
+    server k8s-controller-1 controller_1_ip:6443 check
+    server k8s-controller-2 controller_2_ip:6443 check
+    server k8s-controller-3 controller_3_ip:6443 check
