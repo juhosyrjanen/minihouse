@@ -8,6 +8,7 @@ includes:
   loadbalancer: tasks/loadbalancer.yml
   vms: tasks/vms.yml
   checks: tasks/checks.yml
+  download: tasks/download-iso.yml
 
 tasks:
   up:
