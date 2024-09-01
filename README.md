@@ -6,6 +6,7 @@ Roadmap:
 
  - ✅ Libvirt based CoreOS virtualisation
  - ✅ Kubernetes host provisioning
+ - 🚧 `kubelet` in Podman
  - 🚧 `etcd` in Podman
  - 🚧 Automated cluster setup via `kubeadm`
  - 🚧 Automated cluster addon setup via ArgoCD
