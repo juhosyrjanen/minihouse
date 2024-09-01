@@ -6,15 +6,18 @@ Roadmap:
 
  - ✅ Libvirt based CoreOS virtualisation
  - ✅ Kubernetes host provisioning
+ - ✅ HAProxy setup with keepalived
+ - 🚧 DNS server running in loadbalancer server
  - 🚧 `kubelet` in Podman
  - 🚧 `etcd` in Podman
- - 🚧 Automated cluster setup via `kubeadm`
+ - 🚧 Automated cluster bootstrap
+ - 🚧 In-place upgrades
  - 🚧 Automated cluster addon setup via ArgoCD
 
 ## Requirements
 
 - Arch Linux or Arch based OS
-- [Libvirt](https://libvirt.org/) default networking stack (assumed CIDR currently `192.168.122.0/24`)
+- [Libvirt](https://libvirt.org/) default networking stack (assumed CIRD currently `192.168.122.0/24`)
 - [Task](https://taskfile.dev/)
 - Fighting spirit
 
