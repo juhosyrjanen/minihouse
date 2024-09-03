@@ -16,6 +16,7 @@ tasks:
     cmds:
       - task: vms:generate-ssh-key
       - task: vms:initialize-json
+      - task: download:download-coreos-iso
       - task: vms:create-controllers
       - task: vms:create-loadbalancer
       #- task: vms:create-workers
